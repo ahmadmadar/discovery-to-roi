@@ -1,185 +1,259 @@
-# CLAUDE.md
+# CLAUDE.md — process-to-agent
 
 ## What this project is
 
-A simulated, short client engagement for a fictional company, **Northline
-Freight**, a mid-size third-party logistics (3PL) provider. It runs the
-way a real discovery engagement runs: SOW, stakeholder interviews,
-synthesis, prioritization, a business case, an executive readout and a
-pilot proposal.
+A 3-day simulated consulting engagement, run with Claude Code. A fictional
+logistics client wants an AI agent to handle freight claims. I act as the AI
+lead consultant and technical product owner. My job is to:
 
-Claude plays two roles:
+1. Run discovery and decide what should be automated, redesigned, or eliminated.
+2. Define the agent's decision logic and human sign-off boundaries.
+3. Write requirements an engineer can build from without clarification.
+4. Prototype the agent, test it on two models, and measure quality and cost.
+5. Build and defend a business case.
+6. Document which components are reusable platform pieces and which are one-offs.
 
-1. **The client.** Each stakeholder is a persona with a hidden brief.
-   Ahmad interviews them live.
-2. **The delivery team.** Claude drafts, synthesizes, builds the ROI
-   model and runs the checks. Ahmad reviews and decides.
+Everything is synthetic. The client, people and data are fictional. This is a
+portfolio project showing AI-assisted delivery, and it says so plainly.
 
-The final output is a business case Ahmad can defend, plus an honest
-record of where he exercised judgment and where Claude did the work.
+## The client
 
-## Why this exists
+**Northline Freight** is a fictional mid-size third-party logistics (3PL)
+company. Its ask: "Build us an AI agent that handles freight damage and
+shortage claims." The engagement runs two-in-a-box: I own the what and why,
+and Claude plays the forward-deployed engineer (FDE) who owns the how.
 
-Ahmad already has portfolio projects that show building with Claude
-(Meridian MCP server, Atlas RAG agent) and cloud infrastructure
-(meridian-infra). This one shows the consulting side: framing, discovery,
-judgment on conflicting evidence, defensible numbers and an executive
-recommendation, with AI used properly inside that workflow.
+### Stakeholders (played by Claude via `/interview`)
 
-**What Ahmad owns, and Claude must not do for him:**
+| Persona | Session | Role in the story |
+|---|---|---|
+| COO (sponsor) | Day 1 | Wants the agent; believes claims are slow because staff are slow |
+| Claims and dispatch lead | Day 1 | Owns the day-to-day; knows the workarounds and edge cases |
+| CFO | Day 3 | Challenger; tests the ROI model and model-cost assumptions |
 
-- The SOW, success criteria and data-handling note.
-- The interview guide and every interview question asked.
-- Field notes after each interview.
-- Rulings on contradictions, and what is "confirmed" versus "to validate".
-- The prioritization rubric and the final ranking.
-- The ROI model's structure, baselines and assumptions.
-- The recommendation, the readout and answers to stakeholder pushback.
+IT is not a persona. IT's role is a data release: a synthetic 6-month claims
+dataset (~400 claims), released to `data/released/` only after I submit a
+written data request.
 
-Claude may critique any of these, like a senior engagement manager
-would, but never writes or rewrites them unless Ahmad asks for a
-specific edit. When Ahmad changes something because of a critique, log
-it in `docs/consultant-decisions.md`.
+## Roles
+
+**I own every judgment call.** Claude does production work and logs it.
+
+| I own | Claude does |
+|---|---|
+| SOW with stakeholder map, interview guide, data request | Repo scaffold, world-building and seal (via subagent) |
+| Interviews, field notes | Persona play, data release |
+| Contradiction rulings, the "eliminate, don't automate" call | Cited synthesis, data-vs-claims check, swimlane drafts |
+| Future-state process, decision logic, scope table | Critique of my logic; flags gaps |
+| User stories, acceptance criteria, edge cases, eval expected outcomes | Claims-agent Skill built from my requirements |
+| Spike design: which models, which metrics, the pass bar | Eval harness, two-model run, decision trace, sign-off queue view |
+| Model recommendation, platform ADR | Cost and latency tables |
+| ROI structure, baselines, assumptions | Python ROI model -> .xlsx, sensitivity, payback |
+| Exec memo, CFO defence | Cold-FDE subagent, CFO persona, README draft |
+
+When Claude reaches a decision that belongs to me, it stops and asks. It
+does not decide on my behalf and record that as my decision.
+
+## Ground rules (non-negotiable)
+
+1. **Sealed world.**
+   - `sealed/` holds persona briefs, ground truth (planted findings), and the
+     full dataset. It is gitignored until the Day 3 reveal.
+   - On Day 1 its contents are hashed into `SEAL.sha256`, which is committed.
+   - A subagent writes the sealed world, so the main session never authors
+     the ground truth.
+   - The main session may read persona briefs only while running `/interview`
+     in character, and the dataset only to produce the release.
+   - Claude never reads `sealed/ground-truth.md` before the reveal.
+   - Claude never hints at, summarizes, or steers me toward sealed contents.
+   - Personas answer only what they are asked, in character, and do not
+     volunteer findings.
+2. **No invented numbers.** Every figure comes from a transcript, the released
+   dataset, a spike run, or an assumption I set and label. If a number is
+   missing, Claude asks for it.
+3. **Cite everything.** Findings cite a transcript line (`T1:L41`) or a
+   dataset query in `analysis/`. Uncited claims get flagged, not written.
+4. **Calculations in code.** No arithmetic in prose. ROI, data checks and
+   spike metrics run in Python and are reproducible.
+5. **Synthetic, stated plainly.** README and every client-facing deliverable
+   carry a one-line note that the client and data are fictional.
+6. **Two logs, updated at the end of every session.**
+   - `docs/ai-assisted-delivery.md`: what Claude did, which model, which files.
+   - `docs/consultant-decisions.md`: where I overruled, corrected, or chose
+     against Claude, and why. Claude drafts entries; I confirm the wording.
+7. **Requirements freeze.** Requirements v1 is frozen before the cold-FDE test.
+   It is not edited during the test. Revisions go to v2, and both are kept.
+8. **Spike spend control.** The API key is read from the environment
+   (`ANTHROPIC_API_KEY`), never committed. Each eval run logs token usage and
+   cost. Before any run, Claude states the estimated cost.
+9. **Models.** Opus for world-building and Day 1 synthesis; Sonnet otherwise.
+   The spike compares two models I choose.
+10. **No real organizations.** No real company, client, or employer names
+    anywhere in the repo.
+
+## 3-day plan
+
+### Day 1: Discovery and redesign
+- Claude:
+  - Scaffold the repo.
+  - Spawn a subagent to build the sealed world and write `SEAL.sha256`.
+  - Create the `/interview` skill.
+  - Critique my interview guide.
+- Me:
+  - SOW with stakeholder map and data request.
+  - Interview guide.
+  - Two live interviews (COO, claims lead), about 25 minutes each.
+  - Field notes.
+- Claude: cited synthesis, data-vs-claims check, current-state swimlane draft.
+- Me:
+  - Contradiction rulings.
+  - The "eliminate, don't automate" call.
+  - Future-state swimlane.
+  - Decision tree with confidence thresholds and escalation triggers.
+  - Scope table with three tiers: autonomous / human sign-off / always escalate.
+
+### Day 2: Requirements and spike
+- Me:
+  - Requirements v1: user stories, acceptance criteria, edge cases.
+  - Expected outcomes for about 20 eval claims.
+- Claude:
+  - Claims-agent Skill built from v1.
+  - `spike/run_eval.py`.
+  - Decision trace (JSONL) and sign-off queue view.
+- Run the eval on two models: pass rate, cost per claim, latency.
+- Freeze v1, run the cold-FDE test, then revise to v2.
+
+### Day 3: Business case and ship
+- Me: ROI structure and assumptions.
+- Claude: Python model -> `.xlsx`, with three scenarios that use spike costs, plus payback and sensitivity.
+- CFO interview as the defence; log every challenge and answer.
+- Me:
+  - Platform ADR: reusable vs claims-specific components, and data-residency / sovereign deployment considerations.
+  - One-page exec memo with a pilot recommendation.
+- Seal reveal and scoring, then a miss review.
+- Claude drafts the README. Publish.
+
+## Sealed world specification (for the world-building subagent)
+
+Plant 5–6 findings across these categories. Each needs evidence hidden in
+persona briefs and/or the dataset.
+
+- **Waste to eliminate:** a step that adds no value and should be removed,
+  not automated.
+- **Ownership conflict:** two stakeholders disagree on who owns a decision.
+- **Claim vs. data:** a rule someone states confidently that the dataset
+  contradicts.
+- **Hidden edge case:** known to only one persona, revealed only if asked well.
+- **Feasibility trap:** something the client wants the agent to own that
+  should stay with a human (judgment, liability, or compliance exposure).
+
+Files:
+- `sealed/personas/<role>.md` — background, knowledge, beliefs, blind spots,
+  what they reveal only under good questioning.
+- `sealed/ground-truth.md` — each finding, its evidence, and what counts as
+  found vs. partial.
+- `sealed/data/claims_full.csv` — full synthetic dataset.
+
+The released dataset is a subset or cut of the full one, chosen to match the
+data request I actually write.
+
+## Skills
+
+### `/interview <persona>`
+- Claude reads only that persona's brief and answers in character, in plain
+  conversational language.
+- Claude does not break character to coach me.
+- Claude saves the transcript with numbered lines to
+  `engagement/01-discovery/transcripts/T<n>-<persona>.md`.
+- The interview ends when I type `/end`.
+
+### `claims-agent`
+- The prototype agent, built only from the current requirements version.
+- For each claim, it outputs a structured decision:
+  - `decision`
+  - `rule_applied`
+  - `confidence`
+  - `route` (`autonomous` | `sign_off` | `escalate`)
+  - `rationale`
+- It never decides outside its scope table. Anything outside scope goes to
+  `escalate`.
+
+## Spike: eval harness
+
+- `spike/eval_set.jsonl`: about 20 claims, each with my expected `decision`
+  and `route`. Must-escalate cases are included.
+- `spike/run_eval.py`:
+  - Runs the claims-agent prompt against each model.
+  - Records pass/fail per claim, input/output tokens, cost, and latency.
+  - Writes a trace line per decision to `spike/traces/<model>.jsonl`.
+- `spike/results.md` reports:
+  - Pass rate, escalation correctness, cost per claim, and p50/p95 latency for each model.
+  - My recommendation, written by me.
+- Scoring is deterministic: compare structured fields. No LLM-as-judge unless
+  I approve it.
+
+## Cold-FDE handoff test
+
+- Spawn a fresh subagent (Sonnet) that can read only
+  `engagement/03-requirements/v1/`.
+- Prompt: "You are the engineer building this agent. List every question you
+  would need the business to answer before you could build it without
+  guessing."
+- Save its output to `engagement/03-requirements/handoff-v1.md`.
+- I classify each question as a real gap or noise. Only real gaps count.
+- Revise to v2, rerun the test, and save `handoff-v2.md`.
+
+## Success metrics (reported honestly, misses included)
+
+| Metric | Target |
+|---|---|
+| Cold-FDE real-gap questions on v2 | 0 (v1 count reported too) |
+| Planted findings discovered | ≥ 4 of 5–6 |
+| Eval pass rate, recommended model | ≥ 85% |
+| Escalation correctness | 100% of must-escalate claims routed correctly |
+| Cost per claim and latency | Reported for both models |
+| ROI structural revisions after CFO defence | 0 |
+| Unsupported numbers in deliverables | 0 |
 
 ## Repo structure
 
 ```
-discovery-to-roi/
+process-to-agent/
 ├── CLAUDE.md
-├── README.md
-├── SEAL.sha256                  # hashes of sealed/ taken on Day 1
-├── .claude/
-│   ├── settings.json
-│   └── skills/
-│       └── interview/SKILL.md   # Day 1
-├── client/                      # what the client has given us (public)
-│   ├── fact-sheet.md
-│   ├── org-chart.md
-│   └── data/                    # only extracts released by the IT persona
-├── sealed/                      # gitignored until Day 5. Ahmad never opens it.
-│   ├── personas/                # neutral file names: p1.md, p2.md, ...
-│   ├── ground-truth.md
-│   ├── data-source/             # full datasets + generator script
-│   └── release-rules.md         # what each persona will release, and when
+├── README.md                # headline numbers on the first screen
+├── LICENSE                  # MIT
+├── SEAL.sha256
+├── sealed/                  # gitignored until reveal
+├── .claude/skills/
+│   ├── interview/
+│   └── claims-agent/
 ├── engagement/
-│   ├── 00-sow/
-│   ├── 01-kickoff/              # stakeholder map, interview guide
-│   ├── 02-discovery/            # transcripts/, field-notes/, data-requests.md
-│   ├── 03-synthesis/            # findings, process maps, playback memo, rubric, backlog
-│   ├── 04-business-case/        # assumptions.md, model/ (Python), northline-roi.xlsx
-│   └── 05-readout/              # exec memo, pilot proposal, video link, Q&A transcript
-├── evals/                       # Day 5 scoring against ground truth
+│   ├── 01-discovery/        # SOW, guide, transcripts, field notes
+│   ├── 02-redesign/         # swimlanes, decision logic, scope table
+│   ├── 03-requirements/     # v1/, v2/, handoff reports
+│   ├── 04-business-case/    # model.py, roi.xlsx, CFO Q&A
+│   └── 05-readout/          # exec memo, platform ADR
+├── spike/
+│   ├── eval_set.jsonl
+│   ├── run_eval.py
+│   ├── traces/
+│   └── results.md
+├── analysis/                # data-vs-claims queries
+├── data/released/
 └── docs/
-    ├── ai-assisted-delivery.md  # what Claude did, per session
-    ├── consultant-decisions.md  # where Ahmad overruled/corrected/rejected Claude
-    └── miss-review.md           # Day 5: what discovery missed, and why
+    ├── ai-assisted-delivery.md
+    ├── consultant-decisions.md
+    └── scoring.md
 ```
 
-## Hard rules
+## Conventions
 
-### The seal
-
-- `sealed/` holds the persona briefs, the ground truth and the full
-  datasets. It is in `.gitignore` until Day 5, so its contents never show
-  up in a GitHub Desktop diff.
-- **Claude never prints, quotes, summarizes or hints at the contents of
-  `sealed/`** to Ahmad, in chat, in files outside `sealed/`, or in commit
-  messages. This includes "you might want to ask about X" nudges.
-- Claude reads `sealed/` only when: building the world (Day 1), running
-  `/interview` (only the brief for the persona being interviewed),
-  releasing data a persona agreed to release, or scoring (Day 5).
-- `SEAL.sha256` is committed on Day 1 and proves the ground truth was not
-  edited after the interviews. If anything in `sealed/` must change after
-  Day 1, stop, tell Ahmad that a change is needed (not what it is), and
-  record it in `docs/ai-assisted-delivery.md`.
-
-### Personas
-
-- A persona answers only what they would plausibly know, in their own
-  voice, and reveals guarded information only when asked the right kind
-  of question (specific, follow-up, evidence-seeking). Vague questions
-  get vague answers.
-- Personas never break character, never coach the interviewer, and never
-  reference other personas' briefs.
-- Data is released only when a persona agrees to a reasonable, specific
-  request. Copy the released extract from `sealed/data-source/` to
-  `client/data/` and log it in `engagement/02-discovery/data-requests.md`.
-
-### Numbers
-
-- **Claude never invents a figure.** Every number in findings, the model
-  or the readout traces to a transcript line, a released dataset or an
-  entry in `engagement/04-business-case/assumptions.md`.
-- A missing baseline becomes an open question for a stakeholder, not an
-  estimate.
-- Calculations run in code (`engagement/04-business-case/model/`), never
-  in prose.
-
-### Citations
-
-Every finding cites its evidence: `[transcript-file:line]` or
-`[client/data/file.csv: description of the query]`.
-
-### Honesty
-
-- The README states plainly that the client, people and data are
-  synthetic and that the ROI is illustrative.
-- Both logs record what actually happened, including mistakes and
-  overruns.
-
-## Version control
-
-- GitHub Desktop. Conventional commits (`feat:`, `docs:`, `chore:`).
-- One branch per day: `day-1-setup`, `day-2-discovery`, ... Merge to
-  `main` at the end of each day.
-- Never commit `sealed/` before Day 5.
-
-## Session workflow
-
-1. Read this file and the latest entries in both logs.
-2. State today's goal and what Ahmad owns today.
-3. Work. Claude does its parts while Ahmad does his; don't wait idle.
-4. After each Ahmad-owned artifact: give a short engagement-manager
-   critique (max 5 points, most important first). Don't rewrite.
-5. End of session: update "Current status" below, add the day's entry to
-   `docs/ai-assisted-delivery.md`, and prompt Ahmad for any missing
-   entries in `docs/consultant-decisions.md`.
-
-## Coaching mode
-
-Ahmad is strengthening four consulting skills here: leading discovery
-interviews, business-case/ROI modelling, prioritization facilitation and
-executive storytelling.
-
-- After each interview, give 3 specific notes on his questioning: a
-  missed follow-up, a leading question, a good probe worth repeating.
-  Give these only after the interview has ended, and without revealing
-  anything from `sealed/`.
-- When a new consulting concept comes up (e.g. payback period,
-  sensitivity analysis, RACI), explain it in 2–3 sentences with how it's
-  used in a real engagement. Don't repeat concepts already covered.
-
-## Model usage
-
-- Default: Sonnet.
-- Recommend switching to Opus for: Day 1 world-building and persona
-  design, Day 3 synthesis, and after two failed attempts at the same fix.
-- Claude can't switch models itself; recommend the switch and Ahmad runs
-  `/model`. Log switches in `docs/ai-assisted-delivery.md`.
-
-## Pace and plan (5 sessions, ~3 hours each, within one week)
-
-| Day | Session | Ahmad owns | Claude does |
-|---|---|---|---|
-| 1 | Setup, SOW, prep | SOW + data-handling note, stakeholder map, interview guide v1 | Repo, world-building + seal, `/interview` skill, critique of the guide |
-| 2 | Discovery | 4 live interviews (~30 min each), data request to IT, field notes | Plays personas, releases data |
-| 3 | Synthesis + prioritization | Contradiction rulings, playback memo, rubric, final ranking incl. one "don't automate" call | Cited theme clustering, process maps, data-vs-claims check, first-pass backlog |
-| 4 | Business case | Model structure, baselines, assumptions register; defend it to the CFO persona | Python model → `.xlsx`, sensitivity, payback |
-| 5 | Readout + wrap | Exec memo, 5-min video, live Q&A, pilot proposal, open the seal, miss review | Scoring, README, LinkedIn draft, log pass |
-
-Days 6–7 are buffer. If Day 3 overruns, move the playback memo to Day 4
-morning. Never cut the decision log.
-
-## Current status
-
-Not started. Day 1 begins 2026-10-12.
+- Deliverables are Markdown. Diagrams use Mermaid swimlanes or flowcharts.
+- Writing is consulting-grade: lead with the conclusion, short sections, no
+  filler.
+- Python 3.11+. Dependencies go in `requirements.txt`, with pinned versions.
+- Commit at the end of each work block. Messages use the form
+  `day<n>: <what changed>`.
+- At the start of each session, Claude reads this file, both logs, and the
+  latest outputs. Then it states which day and step we're on before doing
+  anything.
