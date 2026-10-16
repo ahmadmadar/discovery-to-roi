@@ -83,9 +83,14 @@ does not decide on my behalf and record that as my decision.
      against Claude, and why. Claude drafts entries; I confirm the wording.
 7. **Requirements freeze.** Requirements v1 is frozen before the cold-FDE test.
    It is not edited during the test. Revisions go to v2, and both are kept.
-8. **Spike spend control.** The API key is read from the environment
-   (`ANTHROPIC_API_KEY`), never committed. Each eval run logs token usage and
-   cost. Before any run, Claude states the estimated cost.
+8. **Spike spend control.** The spike uses its own API key, stored as
+   `SPIKE_ANTHROPIC_API_KEY` in `.env` at the repo root and loaded by
+   `spike/run_eval.py` via `python-dotenv`. It is never exported to the
+   shell, never committed, and never named `ANTHROPIC_API_KEY` (so Claude
+   Code doesn't pick it up and bill sessions to it). The key lives in a
+   dedicated Console workspace with a monthly spend limit. Each eval run
+   logs token usage and cost, and before any run Claude states the
+   estimated cost.
 9. **Models.** Opus for world-building and Day 1 synthesis; Sonnet otherwise.
    The spike compares two models I choose.
 10. **No real organizations.** No real company, client, or employer names
@@ -189,6 +194,8 @@ data request I actually write.
 - `spike/results.md` reports:
   - Pass rate, escalation correctness, cost per claim, and p50/p95 latency for each model.
   - My recommendation, written by me.
+- `run_eval.py` loads the agent prompt directly from
+  `.claude/skills/claims-agent/SKILL.md`, so the Skill and the spike never drift.  
 - Scoring is deterministic: compare structured fields. No LLM-as-judge unless
   I approve it.
 
@@ -222,24 +229,31 @@ process-to-agent/
 ├── CLAUDE.md
 ├── README.md                # headline numbers on the first screen
 ├── LICENSE                  # MIT
-├── SEAL.sha256
+├── .gitignore               # sealed/, .env
+├── .env                     # gitignored — SPIKE_ANTHROPIC_API_KEY
+├── .env.example             # committed — variable name only, no value
+├── requirements.txt         # pinned; includes anthropic, python-dotenv
+├── SEAL.sha256              # committed Day 1; hash of sealed/
 ├── sealed/                  # gitignored until reveal
+│   ├── personas/            # one brief per persona
+│   ├── ground-truth.md      # planted findings; unread until reveal
+│   └── data/claims_full.csv
 ├── .claude/skills/
-│   ├── interview/
-│   └── claims-agent/
+│   ├── interview/           # /interview <persona>, /end to close
+│   └── claims-agent/        # SKILL.md is the single source of the agent prompt
 ├── engagement/
-│   ├── 01-discovery/        # SOW, guide, transcripts, field notes
+│   ├── 01-discovery/        # SOW, guide, transcripts/, field notes
 │   ├── 02-redesign/         # swimlanes, decision logic, scope table
-│   ├── 03-requirements/     # v1/, v2/, handoff reports
+│   ├── 03-requirements/     # v1/, v2/, handoff-v1.md, handoff-v2.md
 │   ├── 04-business-case/    # model.py, roi.xlsx, CFO Q&A
 │   └── 05-readout/          # exec memo, platform ADR
 ├── spike/
-│   ├── eval_set.jsonl
-│   ├── run_eval.py
-│   ├── traces/
-│   └── results.md
+│   ├── eval_set.jsonl       # ~20 claims + expected decision and route
+│   ├── run_eval.py          # loads prompt from claims-agent/SKILL.md
+│   ├── traces/              # <model>.jsonl, one line per decision
+│   └── results.md           # metrics + my recommendation
 ├── analysis/                # data-vs-claims queries
-├── data/released/
+├── data/released/           # IT data release (subset of sealed data)
 └── docs/
     ├── ai-assisted-delivery.md
     ├── consultant-decisions.md
